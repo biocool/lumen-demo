@@ -1520,6 +1520,22 @@ footer{ background:var(--charcoal); color:rgba(251,249,243,.7); }
     });
   });
 
+  /* Stop the site's smooth-scroll (Lenis) from stealing wheel/touch while a
+     modal is open. A capture-phase window listener runs BEFORE Lenis's own
+     handler: inside the modal body we let native scroll happen; anywhere else
+     we freeze the page. This makes the modal scrollable regardless of Lenis. */
+  function lmAnyOpen(){ return document.querySelector('.lm-overlay.open'); }
+  window.addEventListener('wheel', function(e){
+    if(!lmAnyOpen()) return;
+    e.stopImmediatePropagation();
+    if(!(e.target.closest && e.target.closest('.lm-body'))) e.preventDefault();
+  }, {capture:true, passive:false});
+  window.addEventListener('touchmove', function(e){
+    if(!lmAnyOpen()) return;
+    e.stopImmediatePropagation();
+    if(!(e.target.closest && e.target.closest('.lm-body'))) e.preventDefault();
+  }, {capture:true, passive:false});
+
   /* light phone formatting */
   function phoneFmt(e){
     let d = e.target.value.replace(/\D/g,'').slice(0,10);
