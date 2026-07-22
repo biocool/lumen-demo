@@ -436,6 +436,10 @@ footer{ background:var(--charcoal); color:rgba(251,249,243,.7); }
 ========================================================= */
 :root{ --lm-red:#B4553F; }
 .lm-overlay [hidden]{ display:none !important; }
+.nav-ico{ display:inline-flex; align-items:center; gap:7px; }
+.nav-ico svg{ width:16px; height:16px; stroke:currentColor; }
+.btn .btn-ico{ width:16px; height:16px; margin-right:3px; flex:0 0 auto; }
+.btn.btn-fill{ display:inline-flex; align-items:center; }
 
 /* ---------- Scholarship band ---------- */
 .lm-schol{ background:linear-gradient(180deg,var(--sand) 0%,var(--bone) 100%); }
@@ -485,7 +489,7 @@ footer{ background:var(--charcoal); color:rgba(251,249,243,.7); }
 .lm-steps .lbl{ font-size:.7rem; margin-top:9px; color:var(--muted); letter-spacing:.03em; }
 .lm-steps .s.active .lbl{ color:var(--ink); }
 
-.lm-body{ padding:24px 42px 6px; overflow-y:auto; -webkit-overflow-scrolling:touch; flex:1 1 auto; }
+.lm-body{ padding:24px 42px 6px; overflow-y:auto; -webkit-overflow-scrolling:touch; flex:1 1 auto; min-height:0; overscroll-behavior:contain; touch-action:pan-y; }
 .lm-panel{ display:none; }
 .lm-panel.is-active{ display:block; animation:lmFade .5s var(--ease); }
 @keyframes lmFade{ from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:none;} }
@@ -620,8 +624,9 @@ footer{ background:var(--charcoal); color:rgba(251,249,243,.7); }
     <a href="#services">Care</a>
     <a href="#stories">Stories</a>
     <a href="#faq">Questions</a>
+    <a href="#scholarship" class="nav-ico js-scholarship" title="Apply for the scholarship"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10L12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1 2.7 2.5 6 2.5s6-1.5 6-2.5v-5"/></svg>Scholarship</a>
   </nav>
-  <a href="#book" class="btn btn-fill">Book a Consultation <span class="arr">&rarr;</span></a>
+  <a href="#book" class="btn btn-fill"><svg class="btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="17" rx="2"/><path d="M3 9h18M8 2.5v4M16 2.5v4"/></svg>Book a Consultation <span class="arr">&rarr;</span></a>
   <button class="nav-toggle" id="navToggle" aria-label="Menu"><span></span><span></span><span></span></button>
 </header>
 
@@ -1240,7 +1245,7 @@ footer{ background:var(--charcoal); color:rgba(251,249,243,.7); }
         <div class="s" data-step="3"><div class="bar"><i></i></div><div class="lbl">Confirm</div></div>
       </div>
     </div>
-    <div class="lm-body">
+    <div class="lm-body" data-lenis-prevent>
 
       <!-- Panel 1 : details -->
       <div class="lm-panel is-active" data-panel="1">
@@ -1356,7 +1361,7 @@ footer{ background:var(--charcoal); color:rgba(251,249,243,.7); }
         <div class="s" data-step="3"><div class="bar"><i></i></div><div class="lbl">Review</div></div>
       </div>
     </div>
-    <div class="lm-body">
+    <div class="lm-body" data-lenis-prevent>
 
       <!-- Panel 1 -->
       <div class="lm-panel is-active" data-panel="1">
@@ -1378,17 +1383,10 @@ footer{ background:var(--charcoal); color:rgba(251,249,243,.7); }
             <div class="lm-err" data-err="sc_phone">Please enter a phone number.</div>
           </div>
         </div>
-        <div class="lm-row">
-          <div class="lm-field">
-            <label class="lm-label" for="sc_dob">Date of birth</label>
-            <input class="lm-input" id="sc_dob" type="date">
-            <div class="lm-err" data-err="sc_dob">Please enter your date of birth.</div>
-          </div>
-          <div class="lm-field">
-            <label class="lm-label" for="sc_age">Age</label>
-            <input class="lm-input" id="sc_age" type="number" min="14" max="25" placeholder="17">
-            <div class="lm-err" data-err="sc_age">Please enter your age.</div>
-          </div>
+        <div class="lm-field">
+          <label class="lm-label" for="sc_dob">Date of birth</label>
+          <input class="lm-input" id="sc_dob" type="date">
+          <div class="lm-err" data-err="sc_dob">Please enter your date of birth.</div>
         </div>
         <div class="lm-field">
           <label class="lm-label" for="sc_address">Full address</label>
@@ -1511,6 +1509,7 @@ footer{ background:var(--charcoal); color:rgba(251,249,243,.7); }
     const b = g.querySelector('button.on'); return b ? b.dataset.val : '';
   }
   function words(t){ t=(t||'').trim(); return t ? t.split(/\s+/).length : 0; }
+  function ageFromDob(s){ if(!s) return ''; const d=new Date(s); if(isNaN(d)) return ''; const t=new Date(); let a=t.getFullYear()-d.getFullYear(); const m=t.getMonth()-d.getMonth(); if(m<0||(m===0&&t.getDate()<d.getDate())) a--; return (a>=0&&a<130)? a : ''; }
 
   /* segmented controls */
   $$('.lm-seg').forEach(g=>{
@@ -1714,7 +1713,7 @@ footer{ background:var(--charcoal); color:rgba(251,249,243,.7); }
       validate(step){
         if(step===1){
           let ok=true;
-          const req=['sc_name','sc_email','sc_phone','sc_dob','sc_age','sc_address','sc_school','sc_gpa'];
+          const req=['sc_name','sc_email','sc_phone','sc_dob','sc_address','sc_school','sc_gpa'];
           req.forEach(id=>{
             const bad = id==='sc_email' ? !EMAIL.test(val(scEl,id)) : !val(scEl,id);
             err(scEl,id,bad); if(bad) ok=false;
@@ -1734,6 +1733,7 @@ footer{ background:var(--charcoal); color:rgba(251,249,243,.7); }
           reviewRow('Student', val(scEl,'sc_name')),
           reviewRow('Email', val(scEl,'sc_email')),
           reviewRow('Phone', val(scEl,'sc_phone')),
+          reviewRow('Date of birth', (function(){ var d=val(scEl,'sc_dob'); if(!d) return '—'; var a=ageFromDob(d); return new Date(d).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})+(a!==''?' · age '+a:''); })()),
           reviewRow('High school', val(scEl,'sc_school')),
           reviewRow('Grade · GPA', 'Grade '+grade.value+' · '+gpaTxt),
           reviewRow('Heard via', val(scEl,'sc_hear')),
@@ -1763,6 +1763,8 @@ footer{ background:var(--charcoal); color:rgba(251,249,243,.7); }
   function bind(el, modal){
     el.addEventListener('click', e=>{
       e.preventDefault(); e.stopImmediatePropagation();
+      var nl=document.getElementById('navLinks'), nt=document.getElementById('navToggle');
+      if(nl) nl.classList.remove('open'); if(nt) nt.classList.remove('open');
       openModal(modal);
     }, true);
   }
