@@ -1414,6 +1414,14 @@ footer{ background:var(--charcoal); color:rgba(251,249,243,.7); }
   function autoIntro(){
     if(L.markStarted) L.markStarted();
     let DX=0, DY=0, done=false;
+    /* hold the page at the top for the whole intro so it never lands mid-page */
+    function lockScroll(on){
+      try{ document.documentElement.style.overflow=on?'hidden':''; document.body.style.overflow=on?'hidden':''; }catch(e){}
+      try{ if(window.__lenis){ on?window.__lenis.stop():window.__lenis.start(); } }catch(e){}
+      if(!on){ try{ window.scrollTo(0,0); if(window.__lenis) window.__lenis.scrollTo(0,{immediate:true}); }catch(e){} }
+    }
+    try{ window.scrollTo(0,0); if(window.__lenis) window.__lenis.scrollTo(0,{immediate:true}); }catch(e){}
+    lockScroll(true);
     function measure(){
       const px=gsap.getProperty(tooth,'x'), py=gsap.getProperty(tooth,'y');
       gsap.set(tooth,{x:0,y:0});
@@ -1431,7 +1439,7 @@ footer{ background:var(--charcoal); color:rgba(251,249,243,.7); }
       gsap.to(partB,{opacity:1,x:0,duration:.8,stagger:.07,ease:'power3.out',delay:.1});
       gsap.to(cta,{opacity:1,y:0,duration:.7,ease:'power3.out',delay:.2});
     }
-    const tl = gsap.timeline({ onComplete:function(){ done=true; if(L.endIntro) L.endIntro(); } });
+    const tl = gsap.timeline({ onComplete:function(){ done=true; lockScroll(false); if(L.endIntro) L.endIntro(); } });
     tl.to(tooth,{opacity:1,scale:1.06,duration:1.0,ease:'power2.out'},0)
       .to(tooth,{scale:1.0,duration:.5,ease:'sine.inOut'},'>')
       .to({},{duration:0.6})                              /* hold ~ so the tooth reads on its own */
@@ -2057,7 +2065,7 @@ footer{ background:var(--charcoal); color:rgba(251,249,243,.7); }
   (function(){
     /* ===== production knobs ===== */
     var MIN_DISPLAY = 2800;   // never hide the loader before this many ms
-    var MAX_WAIT    = 9000;   // hard cap: proceed even if the page never finishes loading
+    var MAX_WAIT    = 6000;   // hard cap: proceed even if the page never finishes loading
     var DEMO_DELAY  = 0;   // EXTRA artificial wait after load, to showcase the loop. SET TO 0 in production.
 
     var pl     = document.getElementById('preloader');
@@ -2105,8 +2113,8 @@ footer{ background:var(--charcoal); color:rgba(251,249,243,.7); }
           }, 2100);
         }, wait);
       };
-      if (document.readyState === 'complete') setTimeout(go, DEMO_DELAY);
-      else window.addEventListener('load', function(){ setTimeout(go, DEMO_DELAY); });
+      if (document.readyState !== 'loading') setTimeout(go, DEMO_DELAY);
+      else document.addEventListener('DOMContentLoaded', function(){ setTimeout(go, DEMO_DELAY); });
       return;
     }
 
@@ -2275,8 +2283,8 @@ footer{ background:var(--charcoal); color:rgba(251,249,243,.7); }
     }
 
     function markReady(){ ready = true; maybeResolve(); }
-    if (document.readyState === 'complete') setTimeout(markReady, DEMO_DELAY);
-    else window.addEventListener('load', function(){ setTimeout(markReady, DEMO_DELAY); });
+    if (document.readyState !== 'loading') setTimeout(markReady, DEMO_DELAY);
+    else document.addEventListener('DOMContentLoaded', function(){ setTimeout(markReady, DEMO_DELAY); });
     setTimeout(function(){ if(!resolving){ ready = true; introDone = true; resolve(); } }, MAX_WAIT);
   })();
 
