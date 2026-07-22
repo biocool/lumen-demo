@@ -569,6 +569,9 @@ footer{ background:var(--charcoal); color:rgba(251,249,243,.7); }
 .lm-review .v{ font-size:.95rem; color:var(--ink); text-align:right; font-weight:500; }
 .lm-review .r .check{ flex:0 0 auto; color:var(--olive); display:flex; }
 .lm-review .r .check svg{ width:18px; height:18px; }
+.lm-edit{ flex:0 0 auto; display:inline-flex; align-items:center; gap:6px; font-family:var(--sans); font-size:.8rem; color:var(--sage-deep); padding:7px 13px; border:1px solid var(--hair); border-radius:999px; transition:.24s var(--ease); }
+.lm-edit svg{ width:13px; height:13px; }
+.lm-edit:hover{ border-color:var(--sage-deep); background:rgba(110,124,99,.09); color:var(--olive); }
 .lm-confirmnote{ font-size:.82rem; color:var(--muted); margin-top:16px; text-align:center; line-height:1.55; }
 
 /* word counter */
@@ -1380,13 +1383,13 @@ footer{ background:var(--charcoal); color:rgba(251,249,243,.7); }
           <div class="lm-field">
             <label class="lm-label" for="sc_phone">Phone</label>
             <input class="lm-input" id="sc_phone" type="tel" placeholder="(000) 000-0000">
-            <div class="lm-err" data-err="sc_phone">Please enter a phone number.</div>
+            <div class="lm-err" data-err="sc_phone">Please enter a valid 10-digit phone number.</div>
           </div>
         </div>
         <div class="lm-field">
           <label class="lm-label" for="sc_dob">Date of birth</label>
           <input class="lm-input" id="sc_dob" type="date">
-          <div class="lm-err" data-err="sc_dob">Please enter your date of birth.</div>
+          <div class="lm-err" data-err="sc_dob">Please enter a valid date of birth.</div>
         </div>
         <div class="lm-field">
           <label class="lm-label" for="sc_address">Full address</label>
@@ -1413,8 +1416,8 @@ footer{ background:var(--charcoal); color:rgba(251,249,243,.7); }
           </div>
           <div class="lm-field">
             <label class="lm-label" for="sc_gpa">Current GPA</label>
-            <input class="lm-input" id="sc_gpa" type="text" placeholder="3.8">
-            <div class="lm-err" data-err="sc_gpa">Please enter your GPA.</div>
+            <input class="lm-input" id="sc_gpa" type="text" inputmode="decimal" placeholder="3.8">
+            <div class="lm-err" data-err="sc_gpa">Enter a GPA between 0.0 and 5.0.</div>
           </div>
         </div>
       </div>
@@ -1590,6 +1593,7 @@ footer{ background:var(--charcoal); color:rgba(251,249,243,.7); }
     const steps = $$('.lm-steps .s', modal);
     const panels = $$('.lm-panel', modal);
     let step = 1;
+    let pendingReview = false;   /* true when the user jumped back from review to edit a field */
     const LAST = cfg.steps;
 
     function paint(){
@@ -1599,8 +1603,9 @@ footer{ background:var(--charcoal); color:rgba(251,249,243,.7); }
         s.classList.toggle('active', n===step);
         s.classList.toggle('complete', n<step);
       });
-      back.hidden = step===1;
-      next.textContent = step===LAST ? (cfg.submitLabel||'Confirm') : 'Continue';
+      back.hidden = step===1 || pendingReview;
+      next.textContent = pendingReview ? 'Back to review'
+                        : (step===LAST ? (cfg.submitLabel||'Confirm') : 'Continue');
       foot.hidden = false;
       const body = $('.lm-body', modal); if(body) body.scrollTop = 0;
     }
@@ -1608,11 +1613,23 @@ footer{ background:var(--charcoal); color:rgba(251,249,243,.7); }
 
     next.addEventListener('click', ()=>{
       if(cfg.validate && !cfg.validate(step)) return;
+      if(pendingReview){ pendingReview=false; if(cfg.buildReview) cfg.buildReview(); go(LAST); return; }
       if(step===LAST){ done(); return; }
       if(step===LAST-1 && cfg.buildReview) cfg.buildReview();
       go(step+1);
     });
     back.addEventListener('click', ()=>{ if(step>1) go(step-1); });
+
+    /* Edit buttons inside the confirm-step review jump to the field's page and
+       keep every other page's data. The "Back to review" button returns. */
+    function editTo(n){ pendingReview = true; go(n); }
+    if(cfg.reviewEl){
+      var rb = $(cfg.reviewEl, modal);
+      if(rb) rb.addEventListener('click', function(e){
+        var t = e.target.closest('[data-goto]'); if(!t) return;
+        editTo(parseInt(t.dataset.goto, 10));
+      });
+    }
 
     function done(){
       if(cfg.onSubmit) cfg.onSubmit();
@@ -1621,15 +1638,19 @@ footer{ background:var(--charcoal); color:rgba(251,249,243,.7); }
       foot.hidden = true;
     }
     function reset(){
+      pendingReview = false;
       if(cfg.reset) cfg.reset();
       go(1);
     }
     paint();   /* initial state: step 1 active, Back hidden, progress painted */
-    return { go, reset, current:()=>step };
+    return { go, reset, current:()=>step, editTo };
   }
 
-  function reviewRow(k,v){
-    return '<div class="r"><div><div class="k">'+k+'</div><div class="v" style="text-align:left;font-weight:500;margin-top:3px">'+v+'</div></div><span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span></div>';
+  function reviewRow(k,v,goStep){
+    var right = goStep
+      ? '<button type="button" class="lm-edit" data-goto="'+goStep+'" aria-label="Edit '+k+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>Edit</button>'
+      : '<span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span>';
+    return '<div class="r"><div><div class="k">'+k+'</div><div class="v" style="text-align:left;font-weight:500;margin-top:3px">'+v+'</div></div>'+right+'</div>';
   }
 
   /* ======================= APPOINTMENT ======================= */
@@ -1655,7 +1676,7 @@ footer{ background:var(--charcoal); color:rgba(251,249,243,.7); }
     function fmtDate(d){ return d ? d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'}) : ''; }
 
     const apWiz = wizard(apptEl, {
-      steps:3, submitLabel:'Confirm booking',
+      steps:3, submitLabel:'Confirm booking', reviewEl:'#ap_review',
       validate(step){
         if(step===1){
           let ok=true;
@@ -1675,14 +1696,14 @@ footer{ background:var(--charcoal); color:rgba(251,249,243,.7); }
       },
       buildReview(){
         const r=[
-          reviewRow('Patient', val(apptEl,'ap_first')+' '+val(apptEl,'ap_last')),
-          reviewRow('Email', val(apptEl,'ap_email')),
-          reviewRow('Phone', val(apptEl,'ap_phone')+' · '+segVal(apptEl,'ap_phonetype')),
-          reviewRow('Reason', val(apptEl,'ap_reason')),
+          reviewRow('Patient', val(apptEl,'ap_first')+' '+val(apptEl,'ap_last'), 1),
+          reviewRow('Email', val(apptEl,'ap_email'), 1),
+          reviewRow('Phone', val(apptEl,'ap_phone')+' · '+segVal(apptEl,'ap_phonetype'), 1),
+          reviewRow('Reason', val(apptEl,'ap_reason'), 1),
           reviewRow('Location', 'Lumen Dental Studio · California'),
-          reviewRow('Visit', segVal(apptEl,'ap_visit')),
-          reviewRow('Date', fmtDate(apDate)),
-          reviewRow('Time', apTime)
+          reviewRow('Visit', segVal(apptEl,'ap_visit'), 2),
+          reviewRow('Date', fmtDate(apDate), 2),
+          reviewRow('Time', apTime, 2)
         ].join('');
         $('#ap_review',apptEl).innerHTML=r;
       },
@@ -1725,16 +1746,21 @@ footer{ background:var(--charcoal); color:rgba(251,249,243,.7); }
     });
 
     const scWiz = wizard(scEl, {
-      steps:3, submitLabel:'Submit application',
+      steps:3, submitLabel:'Submit application', reviewEl:'#sc_review',
       validate(step){
         if(step===1){
           let ok=true;
-          const req=['sc_name','sc_email','sc_phone','sc_dob','sc_address','sc_school','sc_gpa'];
-          req.forEach(id=>{
-            const bad = id==='sc_email' ? !EMAIL.test(val(scEl,id)) : !val(scEl,id);
-            err(scEl,id,bad); if(bad) ok=false;
-          });
-          if(!grade.value){ err(scEl,'sc_grade',true); ok=false; } else err(scEl,'sc_grade',false);
+          function mark(id,bad){ err(scEl,id,bad); if(bad) ok=false; }
+          mark('sc_name', !val(scEl,'sc_name'));
+          mark('sc_address', !val(scEl,'sc_address'));
+          mark('sc_school', !val(scEl,'sc_school'));
+          mark('sc_email', !EMAIL.test(val(scEl,'sc_email')));
+          mark('sc_phone', val(scEl,'sc_phone').replace(/\D/g,'').length < 10);
+          var agev = ageFromDob(val(scEl,'sc_dob'));
+          mark('sc_dob', !val(scEl,'sc_dob') || agev==='' || agev<13 || agev>25);
+          var gpa = parseFloat(val(scEl,'sc_gpa'));
+          mark('sc_gpa', isNaN(gpa) || gpa<0 || gpa>5);
+          mark('sc_grade', !grade.value);
           return ok;
         }
         if(step===2){
@@ -1746,16 +1772,16 @@ footer{ background:var(--charcoal); color:rgba(251,249,243,.7); }
       buildReview(){
         const gpaTxt = val(scEl,'sc_gpa');
         const rows=[
-          reviewRow('Student', val(scEl,'sc_name')),
-          reviewRow('Email', val(scEl,'sc_email')),
-          reviewRow('Phone', val(scEl,'sc_phone')),
-          reviewRow('Date of birth', (function(){ var d=val(scEl,'sc_dob'); if(!d) return '—'; var a=ageFromDob(d); return new Date(d).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})+(a!==''?' · age '+a:''); })()),
-          reviewRow('High school', val(scEl,'sc_school')),
-          reviewRow('Grade · GPA', 'Grade '+grade.value+' · '+gpaTxt),
-          reviewRow('Heard via', val(scEl,'sc_hear')),
-          reviewRow('Essay', words(essay.value)+' words')
+          reviewRow('Student', val(scEl,'sc_name'), 1),
+          reviewRow('Email', val(scEl,'sc_email'), 1),
+          reviewRow('Phone', val(scEl,'sc_phone'), 1),
+          reviewRow('Date of birth', (function(){ var d=val(scEl,'sc_dob'); if(!d) return '—'; var a=ageFromDob(d); return new Date(d).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})+(a!==''?' · age '+a:''); })(), 1),
+          reviewRow('High school', val(scEl,'sc_school'), 1),
+          reviewRow('Grade · GPA', 'Grade '+grade.value+' · '+gpaTxt, 1),
+          reviewRow('Heard via', val(scEl,'sc_hear'), 2),
+          reviewRow('Essay', words(essay.value)+' words', 2)
         ];
-        if(val(scEl,'sc_activities')) rows.push(reviewRow('Activities','Included'));
+        if(val(scEl,'sc_activities')) rows.push(reviewRow('Activities','Included', 2));
         $('#sc_review',scEl).innerHTML=rows.join('');
       },
       onSubmit(){
@@ -1767,6 +1793,16 @@ footer{ background:var(--charcoal); color:rgba(251,249,243,.7); }
     });
     scEl.__wiz = scWiz;
   }
+
+  /* clear a field's error as soon as the user edits it */
+  $$('.lm-overlay .lm-input, .lm-overlay .lm-select, .lm-overlay .lm-textarea').forEach(function(el){
+    var clear=function(){
+      el.classList.remove('invalid');
+      var f=el.closest('.lm-field'); var e=f && el.id ? f.querySelector('[data-err="'+el.id+'"]') : null;
+      if(e) e.classList.remove('show');
+    };
+    el.addEventListener('input', clear); el.addEventListener('change', clear);
+  });
 
   /* ---------- close wiring ---------- */
   $$('.lm-overlay').forEach(m=>{
