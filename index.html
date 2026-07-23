@@ -2447,5 +2447,29 @@ footer{ background:var(--charcoal); color:rgba(251,249,243,.7); }
 })();
 </script>
 
+<script>
+/* watchdog: the preloader must NEVER trap the visitor. If the cinematic exit
+   hasn't begun by the deadline, force a clean fade + hand-off. */
+(function(){
+  function forceExit(){
+    try{
+      var pl=document.getElementById('preloader');
+      if(!pl) return;
+      var cs=getComputedStyle(pl);
+      if(cs.display==='none' || parseFloat(cs.opacity)<0.9) return; /* exit already underway */
+      try{ window.dispatchEvent(new Event('jml:reveal')); }catch(e){}
+      pl.style.transition='opacity .8s ease';
+      pl.style.opacity='0';
+      setTimeout(function(){
+        pl.style.display='none';
+        try{ document.documentElement.style.overflow=''; document.body.style.overflow=''; }catch(e){}
+        try{ if(window.__lenis){ window.__lenis.start(); } }catch(e){}
+        try{ if(window.ScrollTrigger) ScrollTrigger.refresh(); }catch(e){}
+      }, 850);
+    }catch(e){}
+  }
+  setTimeout(forceExit, 11000);
+})();
+</script>
 </body>
 </html>
